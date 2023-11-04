@@ -1,0 +1,1189 @@
+---
+title: "FuncionesR"
+author: "Janire Mediavilla"
+date: "2023-11-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# SOFTWARE MATEMÁTICO Y ESTADÍSTICO 
+
+
+
+# 1. DISCRETIZACIÓN
+
+
+La **discretización** es un proceso utilizado en el análisis de datos para convertir variables continuas en variables discretas. Esto se hace dividiendo el rango de valores de una variable en intervalos o categorías más pequeñas.
+
+Existen diferentes algoritmos de discretización que se pueden utilizar, tanto para un solo atributo como para un dataset completo. Dos opciones comunes son la **discretización por igual frecuencia** y la **discretización por igual anchura**. A continuación se van a analizar estos dos algoritmos para un solo atributo y para un dataset completo. Además, se va a contar con una discretización adicional, la **discretización por clusterin empleando el método K-Means**.
+
+
+
+## 1.1. DISCRETIZACIÓN DE IGUAL ANCHURA
+
+
+La discretización por igual anchura es un proceso que consiste en **dividir un atributo en un conjunto de datos en intervalos de ancho uniforme**. Esta técnica es útil para agrupar valores continuos en categorías discretas con el mismo rango de valores.
+
+**Descripción:**
+Esta función discretiza un atributo en un conjunto de datos en intervalos de igual anchura.
+
+**Parámetros:**
+ - datos: Un dataframe que contiene los datos a procesar.
+ - atributo_a_discretizar: El nombre del atributo que se va a discretizar.
+ - n_intervalos: El número de intervalos en los que se va a discretizar el atributo.
+
+**Valor de retorno:**
+ Un vector de enteros que representa la discretización del atributo.Cada entero en el vector corresponde a un intervalo y se asigna a cada observación del atributo según el intervalo al que pertenece.
+
+La función realiza los siguientes pasos:
+
+1. Extrae el atributo que se va a discretizar del conjunto de datos y elimina cualquier valor de NaN.
+2. Calcula los límites inferior y superior de los intervalos en función de los valores mínimo y máximo del atributo.
+3. Calcula el ancho de cada intervalo dividiendo el rango de valores por el número de intervalos.
+4. Aplica la discretización asignando cada valor al intervalo correspondiente en función de su posición relativa al límite inferior y al ancho del intervalo.
+
+
+
+```{r,eval=TRUE, echo=TRUE}
+Discretizacion_igual_anchura <- function(datos, atributo_a_discretizar, n_intervalos) {
+  # Extraer de los datos el atributo a discretizar
+  atributo <- datos[[atributo_a_discretizar]]
+  # Eliminar valores NA
+  atributo <- atributo[!is.na(atributo)]
+
+  if (length(atributo) == 0) {
+    # No hay valores validos para discretizar
+    return(integer(0))
+  }
+
+  # Calcular los limites de los intervalos
+  intervalo_inferior <- min(atributo)
+  intervalo_superior <- max(atributo)
+  anchura <- (intervalo_superior - intervalo_inferior) / n_intervalos
+
+  # Aplicar la discretizacion
+  discretizacion <- vector()
+  for (valor in atributo) {
+    intervalo <- as.integer((valor - intervalo_inferior) / anchura)
+    discretizacion <- c(discretizacion, intervalo) #Agregar los indices de intervalo en el vector discretizacion
+  }
+  return(discretizacion)
+}
+```
+
+
+
+### Ejemplo de uso: Discretización de igual anchura
+
+
+```{r,eval=TRUE, echo=TRUE}
+datos <- data.frame(
+'Edad' = c(30, 40, 35, 28, 45, 37, 32, 41, 29, 33),
+'Ingresos' = c(55000, 48000, 60000, 52000, 58000, 49000, 57000, 51000, 54000, 63000),
+'Puntuacion' = c(75, 68, 72, 80, 67, 73, 78, 69, 74, 76)
+ )
+ n_intervalos <- 5
+ discretizacion <- Discretizacion_igual_anchura(datos, "Edad", n_intervalos)
+ print(discretizacion)
+```
+
+
+## 1.2. DISCRETIZACIÓN IGUAL FRECUENCIA
+
+
+La discretización por igual frecuencia es un proceso que se utiliza para **dividir un atributo en un conjunto de datos en intervalos de igual tamaño, de manera que cada intervalo contenga aproximadamente la misma cantidad de observaciones.** 
+ 
+**Descripción:**
+ Esta función discretiza un atributo en un conjunto de datos en intervalos de igual frecuencia.
+ 
+**Parámetros:**
+ - datos: Un dataframe que contiene los datos a procesar.
+ - atributo_a_discretizar: El nombre del atributo que se va a discretizar.
+ - n_intervalos: El número de intervalos en los que se va a discretizar el atributo.
+ 
+**Valor de retorno:**
+ Un vector de enteros que representa la discretización del atributo.
+
+La función realiza los siguientes pasos:
+
+1. Extrae el atributo que se va a discretizar del conjunto de datos y elimina cualquier valor de NaN.
+2. Calcula los cuantiles en función del número de intervalos.
+3. Divide el rango de valores en partes iguales según los cuantiles.
+4. Aplica la discretización asignando cada valor al intervalo correspondiente en función de su posición relativa a los cuantiles.
+
+
+
+```{r,eval=TRUE, echo=TRUE}
+
+Discretizacion_igual_frecuencia <- function(datos, atributo_a_discretizar, n_intervalos) {
+  
+  # Extraer el atributo de interés y eliminar valores NaN
+  atributo <- datos[[atributo_a_discretizar]]
+  atributo <- atributo[!is.na(atributo)]
+  
+  # Calcular los cuantiles de manera lineal (type=1)
+  cuantiles <- quantile(atributo, probs = seq(0, 1, length.out = n_intervalos + 1), type = 1, na.rm = TRUE) 
+  # Los valores Na se excluyen utilizando na.rm
+  
+  # Aplicar la discretización
+  discretizacion <- cut(atributo, breaks = cuantiles, labels = FALSE, include.lowest = TRUE) #include.lowest asegura que el valor mas bajo del atributo este incluido en el primer intervalo 
+  
+  return(discretizacion)
+}
+```
+
+
+
+### Ejemplo de uso: Discretización de igual frecuencia
+
+
+```{r,eval=TRUE, echo=TRUE}
+ datos <- data.frame(
+'Edad' = c(30, 40, 35, 28, 45, 37, 32, 41, 29, 33),
+'Ingresos' = c(55000, 48000, 60000, 52000, 58000, 49000, 57000, 51000, 54000, 63000),
+'Puntuacion' = c(75, 68, 72, 80, 67, 73, 78, 69, 74, 76)
+ )
+ n_intervalos <- 5
+ discretizacion <- Discretizacion_igual_frecuencia(datos, "Ingresos", n_intervalos)
+ print(discretizacion)
+```
+
+
+
+## 1.3. DISCRETIZACIÓN DATASET
+
+
+La función **discretizar_dataset** permite **discretizar todas las variables numéricas** en un dataset en intervalos de igual anchura o igual frecuencia, **según el método especificado.** Además, **opcionalmente muestra gráficos de los resultados.**
+
+**Descripción:**
+Esta función discretiza todas las variables numéricas en un dataset en intervalos de igual anchura o igual frecuencia, según el método especificado, y opcionalmente muestra gráficos de los resultados.
+ 
+**Parámetros:**
+ - dataset: El dataset a discretizar.
+ - n_intervalos: El número de intervalos en los que se va a discretizar cada variable.
+ - metodo: El método de discretización a utilizar. Puede ser "anchura" o "frecuencia".
+ - plot: Un valor lógico que indica si se deben mostrar gráficos de los resultados (TRUE o FALSE).
+ 
+**Valor de retorno:**
+ Una lista que contiene las variables del dataset discretizadas de acuerdo al método especificado.
+
+
+
+```{r,eval=TRUE, echo=TRUE}
+Discretizacion_dataset <- function(dataset, n_intervalos, metodo, plot) {
+
+  dataset_discretizado <- list()
+
+  for (col_name in names(dataset)) {
+    variable <-dataset[[col_name]]
+
+    if (all(sapply(variable, is.numeric))) {
+      if (length(variable) > 0){
+        if (metodo == "anchura") {
+          columna_discretizada <- Discretizacion_igual_anchura(dataset, col_name, n_intervalos)
+        } else if (metodo == "frecuencia") {
+          columna_discretizada <- Discretizacion_igual_frecuencia(dataset, col_name, n_intervalos)
+        } else {
+          stop("Metodo de discretizacion no valido. Debe ser 'anchura' o 'frecuencia.")
+        }
+        dataset_discretizado[[col_name]] <- columna_discretizada
+      }
+    }
+  }
+
+  # Representacion segun metodo
+  if (plot == TRUE) {
+
+    # Mostar las representaciones en una unica ventana grafica
+    num_plots <- length(names(dataset_discretizado))
+    rows <- ceiling(sqrt(num_plots))
+    cols <- ceiling(num_plots / rows)
+    par(mfrow = c(rows, cols))
+
+    #Representaciones. Boxplot y histograma
+    for (col_name in names(dataset_discretizado)) {
+      if (metodo == "anchura") {
+        boxplot(dataset_discretizado[[col_name]], main = paste("Discretizacion Igual Anchura - ", col_name),
+                xlab = "Atributo", ylab = "Valor", names = col_name)
+      } else if (metodo == "frecuencia") {
+        hist(dataset_discretizado[[col_name]], breaks = n_intervalos, col = 'blue', main = paste("Discretizacion Igual Frecuencia - ", col_name),
+             xlab = "Intervalos", ylab = "Frecuencia")
+      }
+    }
+    par(mfrow = c(1, 1))  # Restaurar a una unica ventana grafica
+  }
+
+  return(dataset_discretizado)
+}
+```
+
+
+### Ejemplo de uso: Discretización dataset
+
+
+```{r,eval=TRUE, echo=TRUE}
+  datos <- data.frame(
+   'Edad' = c(30, 40, 35, 28, 45, 37, 32, 41, 29, 33),
+   'Ingresos' = c(55000, 48000, 60000, 52000, 58000, 49000, 57000, 51000, 54000, 63000),
+  'Puntuacion' = c(75, 68, 72, 80, 67, 73, 78, 69, 74, 76)
+   )
+   n_intervalos <- 5
+
+  dataset_discretizado_anchura <- Discretizacion_dataset(datos, n_intervalos, metodo = "anchura", plot= TRUE)
+  print(dataset_discretizado_anchura)
+  dataset_discretizado_frecuencia <- Discretizacion_dataset(datos, n_intervalos, metodo = "frecuencia", plot= TRUE)
+  print(dataset_discretizado_frecuencia)
+```
+
+
+#### Ejemplo de uso con valores NA
+
+
+```{r,eval=TRUE, echo=TRUE}
+  datos <- data.frame(
+   'Edad' = c(30, 40, NA, 28, 45, 37, 32, 41, 29, 33),
+   'Ingresos' = c(55000, NA, 60000, NA, 58000, 49000, 57000, 51000, 54000, 63000),
+  'Puntuacion' = c(75, 68, 72, 80, 67, 73, 78, 69, 74, 76)
+   )
+   n_intervalos <- 5
+
+  dataset_discretizado_anchura <- Discretizacion_dataset(datos, n_intervalos, metodo = "anchura", plot= TRUE)
+  print(dataset_discretizado_anchura)
+  dataset_discretizado_frecuencia <- Discretizacion_dataset(datos, n_intervalos, metodo = "frecuencia", plot= TRUE)
+  print(dataset_discretizado_frecuencia)
+```
+
+
+
+# 1.4.  DISCRETIZACIÓN K-MEANS
+
+
+La **discretización basada en clústeres** es un método utilizado para convertir un atributo numérico en un conjunto de etiquetas que indican a qué clúster pertenece cada valor del atributo. Uno de los algoritmos más comunes utilizados para este propósito es el **algoritmo K-Means**.
+
+**Descripción:**
+Esta función discretiza un atributo numérico utilizando el algoritmo K-Means con una implementación simple y opcionalmente muestra gráficos de los resultados.
+ 
+**Parámetros:**
+ - atributo: Un vector numérico que se va a discretizar.
+ - n_clusters: El número de clústeres en los que se va a discretizar el atributo.
+ - plot: Un valor lógico que indica si se deben mostrar gráficos de los resultados (TRUE o FALSE).
+ 
+**Valor de retorno:**
+ Un vector de etiquetas que indica a qué clúster pertenece cada valor del atributo.Y el plot si asi se ha indicado.
+
+
+```{r,eval=TRUE, echo=TRUE}
+Discretizacion_Basada_En_Clusteres_Simple <- function(atributo, n_clusters, plot=TRUE) {
+
+  # Verificar que el numero de clusteres sea menor que la poblacion de datos
+  if (n_clusters >= length(atributo)) {
+    stop("El numero de cl?steres debe ser menor que el tamaño de la poblacion de datos.")
+  }
+
+  # Inicializacion manual de centroides
+  centroides <- seq(min(atributo), max(atributo), length.out = n_clusters)
+
+  # Inicializacion de etiquetas de cluster
+  etiquetas <- rep(0, length(atributo))
+
+  # Numero maximo de iteraciones
+  max_iter <- 100
+
+  for (iter in 1:max_iter) {
+    # Asignar cada valor al closter mas cercano
+    for (i in 1:length(atributo)) {
+      distancias <- abs(atributo[i] - centroides)
+      etiquetas[i] <- which.min(distancias)
+    }
+
+    # Actualizar los centroides a la media de los valores de cada cluster
+    for (c in 1:n_clusters) {
+      centroides[c] <- mean(atributo[etiquetas == c])
+    }
+  }
+
+  if (plot == TRUE) {
+
+    for (i in 1:length(atributo)) {
+      valor <- atributo[i]
+      cluster <- etiquetas[i]
+      cat("Valor:", valor, "Cluster:", cluster, "\n")
+    }
+
+    # Crear un diagrama de dispersion para representar los clusteres
+    plot(atributo, col = etiquetas, pch = 19, main = "Discretizaci?n basada en Clusteres", xlab = "Valores", ylab = "Clusteres")
+
+    # Agregar una leyenda
+    legend("topright", legend = unique(etiquetas), col = unique(etiquetas), pch = 19, title = "Clusteres")
+
+    # Etiquetas de ejes
+    title(main = "Discretizaci?n basada en Clusteres", xlab = "Valores", ylab = "Clusteres")
+  }
+  return(etiquetas)
+}
+```
+
+
+### Ejemplo de uso: Discretización basada en clusteres (K-Means)
+
+
+```{r,eval=TRUE, echo=TRUE}
+  datos <- data.frame(
+   Valores = c(10, 15, 600, 20, 35, 80, 85, 55, 60, 300, 400, 500, 80, 90, 90)
+   )
+   n_clusters <- 5
+   
+  Discretizado_Clusteres_Simple <- Discretizacion_Basada_En_Clusteres_Simple(datos$Valores, n_clusters, plot = TRUE)
+  print(Discretizado_Clusteres_Simple)
+```
+
+# 2. CÁLCULO DE MÉTRICAS
+
+El **cálculo de métricas para los atributos de un dataset** es una tarea importante en el análisis de datos. Algunas de las métricas comunes incluyen la varianza y el AUC para las variables continuas, así como la entropía para las variables discretas.
+A continuación se analizaran las funciones pero es importante destacar que la funcion principal **calcular_metricas** es la **encargada de reconocer el tipo de atributo y actuar en consecuencia, llamando a las funciones correspondientes**. Además, en el caso del AUC, se requiere un dataset supervisado con una variable clase binaria para evaluar los atributos numéricos, lo que sifnifica que se debe especificar una variable de clase binaria para evaliar el AUC de los atributos numéricos. 
+
+
+# 2.1. VARIANZA DE UNA VARIABLE CONTINUA
+
+
+La varianza es una medida de la dispersión o variabilidad de los datos. 
+
+**Descripción:**
+Esta función calcula la varianza de un vector numérico. La varianza es una medida de la dispersión o variabilidad de los datos.
+ 
+**Parámetros:**
+ - vector_numérico: Un vector numérico del cual se calculará la varianza.
+
+**Valor de retorno:**
+Un valor numérico que representa la varianza del vector proporcionado.
+
+```{r,eval=TRUE, echo=TRUE}
+
+  calcular_varianza <- function(vector_numerico) {
+  n <- length(vector_numerico)
+  if (n <= 1) {
+    return(0)  # La varianza de un solo valor es 0
+  }
+  media <- mean(vector_numerico)
+  suma_cuadrados <- sum((vector_numerico - media)^2)
+  varianza <- suma_cuadrados / (n - 1)  # Varianza muestral
+  return(varianza)
+} 
+```
+
+
+###  Ejemplo de uso: Cálculo de varianza
+
+```{r,eval=TRUE, echo=TRUE}
+ datos <- c(1, 2, 3, 4, 5)
+ var <- calcular_varianza(datos) # Calcula la varianza del vector
+ print (var)
+```
+
+#### Ejemplo con un solo valor
+Devuelve 0, ya que la varianza de un solo valor es 0.
+
+```{r,eval=TRUE, echo=TRUE}
+ valor <- 7
+ calcular_varianza(valor) 
+```
+
+#### Ejemplo con un vector de longitud 1
+Devuelve 0, ya que la varianza de un vector de un solo valor es 0.
+
+```{r,eval=TRUE, echo=TRUE}
+  vector_pequeño <- c(5)
+  calcular_varianza(vector_pequeño)  
+```
+
+
+## 2.2. AREA BAJO LA CURVA (AUC) EN VARIABLES CONTINUAS
+
+La función **calcular_auc** se utiliza para calcular el Área Bajo la Curva ROC (AUC), en variables continuas. Calcula el AUC (Área Bajo la Curva ROC) para evaluar el rendimiento de un modelo de clasificación binaria. 
+
+**Descripción:**
+Esta función calcula el AUC (Área Bajo la Curva ROC) para evaluar el rendimiento de un modelo de clasificación binaria. El AUC mide la capacidad del modelo para distinguir entre clases positivas y negativas. Por tanto, para distinguir entre clase 0 y 1.
+ 
+**Parámetros:**
+ - predicciones: Un vector numérico que contiene las predicciones del modelo.
+ - clase_verdadera: Un vector numérico que contiene las clases verdaderas correspondientes a las predicciones. Debe ser un vector binario y representa las clases verdaderas  (0 para negativo, 1 para positivo).
+ 
+**Valor de retorno:**
+Un valor numérico que representa el AUC calculado a partir de las predicciones y las clases verdaderas.  Un número en el rango de 0 a 1, donde un valor más alto  indica un mejor rendimiento del modelo y 0.5 indica un modelo que no es mejor que el azar. Si la variable de clase no es binaria (no tiene exactamente dos valores únicos), la función devuelve NA y muestra una advertencia.
+
+
+```{r,eval=TRUE, echo=TRUE}
+ calcular_auc <- function(predicciones, clase_verdadera) {
+  # Asegurar que es binario contando los valores ?nicos. Condicion que verifique que la longitud es diferente de 2 asegurando que no hay exactamente dos valores unicos.
+
+  if (length(unique(clase_verdadera)) != 2) {
+    warning("La variable de clase debe ser binaria (0/1) para calcular el AUC.")
+    return(NA)
+  }
+
+  # Predicciones en orden descendente, las predicciones mas altas al principio
+  orden <- order(predicciones, decreasing = TRUE)
+
+  # Reordenar las predicciones y la clase verdadera segun los indices
+  predicciones_ordenadas <- predicciones[orden]
+  clase_ordenada <- clase_verdadera[orden]
+
+  # Inicializar variables para contar los pares (positivo, negativo) y los pares (negativo, positivo)
+
+  pares_positivos <- 0
+  pares_negativos <- 0
+  auc <- 0
+
+  # Calculo de numero total de pares (positivo, negativo)
+  n_positivos <- sum(clase_ordenada == 1)
+  n_negativos <- sum(clase_ordenada == 0)
+
+  if (n_positivos == 0 || n_negativos == 0) {
+    warning("No hay suficientes ejemplos positivos o negativos para calcular el AUC.")
+    return(NA)
+  }
+
+  # Calcular el AUC sumando las areas debajo de la curva ROC
+  for (i in 1:length(predicciones_ordenadas)) {
+    if (clase_ordenada[i] == 1) {
+      pares_positivos <- pares_positivos + 1
+    } else {
+      pares_negativos <- pares_negativos + 1
+      auc <- auc + pares_positivos
+    }
+  }
+
+  # AUC, dividiendo por el producto de pares positivos y negativos que asegura que este en el rango 0 a 1.
+  auc <- auc / (n_positivos * n_negativos)
+  return(auc)
+} 
+```
+
+
+### Ejemplo de uso: Cálculo de AUC
+
+```{r,eval=TRUE, echo=TRUE}
+  predicciones <- c(0.9, 0.7, 0.6, 0.4, 0.2)
+  clase_verdadera <- c(1, 0, 1, 0, 1)
+  auc <- calcular_auc(predicciones, clase_verdadera) # Calcula el AUC del modelo.
+  print(auc)
+```
+
+#### Ejemplo con advertencia
+
+```{r,eval=TRUE, echo=TRUE}
+   clase_no_binaria <- c(0, 1, 2, 1, 0)
+   auc <-  calcular_auc(predicciones, clase_no_binaria)  # Devuelve NA con advertencia.
+   print(auc)
+```
+
+
+## 2.3. ENTROPIA DE UN VECTOR DISCRETO/FACTOR
+
+**Descripción:**
+Esta función calcula la entropía de un vector discreto o factor, que es una medida de la incertidumbre o desorden en las categorías del vector. La entropía es una medida de la información contenida en el vector.
+ 
+**Parámetros:**
+ - vector_discreto: Un vector discreto o factor del cual se calculará la entropía. Contiene categorías o etiquetas.
+ 
+**Valor de retorno:**
+Un valor numérico que representa la entropía del vector discreto o factor. La entropía es un número positivo o cero, puede estar en el rango de 0 (sin incertidumbre) a 1 (máxima incertidumbre).
+
+
+```{r,eval=TRUE, echo=TRUE}
+
+calcular_entropia <- function(vector_discreto) {
+
+  # Frecuencia de cada categoria
+  frecuencias <- table(vector_discreto)
+
+  #Probabilidad de cada categoria
+  probabilidades <- frecuencias / sum(frecuencias)
+
+  # Calcular la entropia utilizando la formula
+  entropia <- -sum(probabilidades * log2(probabilidades))
+  return(entropia)
+}  
+```
+
+### Ejemplo de uso: Cálculo de entropía
+
+```{r,eval=TRUE, echo=TRUE}
+  categorias <- factor(c("A", "B", "A", "C", "B", "A"))
+  entropia <- calcular_entropia(categorias)
+  print(entropia)
+```
+
+
+# 2.4. CALCULAR METRICAS EN FUNCION DEL TIPO DE ATRIBUTO
+
+**Descripción:**
+Esta función calcula métricas específicas en función del tipo de atributo en un conjunto de datos. Puede calcular varianza, entropía y AUC (Área Bajo la Curva ROC) dependiendo de si los atributos son numéricos o discretos.
+ 
+**Parámetros:**
+ - dataset: El conjunto de datos en forma de data frame.
+ - variable_clase (Opcional) La variable de clase utilizada para calcular el AUC. Un vector que contiene las clases verdaderas para calcular el AUC en caso de que los atributos sean numéricos. Debe ser un vector binario (0/1). Por defecto, es NULL y no se calcula el AUC.  Si decides proporcionar este vector, debe ser un "factor".
+ 
+**Valor de retorno:**
+Un data frame que contiene métricas calculadas para cada atributo en el conjunto de datos, incluyendo varianza, entropía y AUC (si es aplicable).
+
+```{r,eval=TRUE, echo=TRUE}
+
+calcular_metricas <- function(dataset, variable_clase = NULL) {
+  resultados <- data.frame()  # Crear un dataframe para almacenar los resultados
+
+  for (col_name in colnames(dataset)) {  # Recorrer cada atributo del dataset
+    col_data <- dataset[[col_name]]
+
+    if (is.numeric(col_data)) {
+      # Si el atributo es numerico, calcular la varianza
+      varianza <- calcular_varianza(col_data)
+      if (!is.null(variable_clase)) {
+        # Si se proporciona una variable de clase, calcular el AUC
+        if (is.factor(variable_clase)) {
+          auc <- calcular_auc(col_data, variable_clase)
+        } else {
+          warning("La variable de clase debe ser de tipo factor para calcular el AUC.")
+          auc <- NA
+        }
+      } else {
+        auc <- NA
+      }
+      resultados <- rbind(resultados, c(Atributo = col_name, Tipo = "Continuo", Varianza = varianza, AUC = auc))
+
+    } else if (is.factor(col_data)) {
+      # Si el atributo es discreto (factor), calcular la entropia
+      entropia <- calcular_entropia(col_data)
+      resultados <- rbind(resultados, c(Atributo = col_name, Tipo = "Discreto", Entropia = entropia, AUC = NA))
+
+    } else {
+      warning(paste("El atributo", col_name, "no es ni numerico ni discreto. Se omitira."))
+    }
+  }
+
+  return(resultados)
+}
+```
+
+### Ejemplo de uso: Cálculo de métricas (Varianza, AUC, Entropía)
+
+```{r,eval=TRUE, echo=TRUE}
+  datos <- data.frame(
+  Atributo1 = c(1.2, 2.3, 3.1, 4.0, 5.5),
+  Atributo2 = factor(c("A", "B", "A", "C", "B")),
+  Clase = c(1, 0, 1, 0, 1)
+   )
+  resultados <- calcular_metricas(datos, datos$Clase)
+  print(resultados) 
+```
+
+# 3. NORMALIZACIÓN Y ESTANDARIZACIÓN 
+
+La normalización y estandarización de variables son técnicas utilizadas en el procesamiento de datos para ajustar los valores de las variables a una escala común. Estas técnicas son especialmente útiles cuando se trabaja con atributos numéricos en un conjunto de datos. Ambas técnicas pueden aplicarse tanto a variables individuales como a todo el conjunto de datos. Al aplicar la normalización o estandarización a un conjunto de datos completo, se asegura que todas las variables numéricas estén en la misma escala, lo que facilita la comparación y el análisis de los datos.
+
+Es importante tener en cuenta que la normalización y estandarización deben aplicarse solo a variables numéricas. Las variables categóricas o variables que representan identificadores únicos no deben ser normalizadas o estandarizadas, ya que esto podría alterar su significado.
+
+## 3.1. NORMALIZACIÓN 
+
+**Descripción:**
+Esta función normaliza un vector numérico en una escala de 0 a 1. La normalización se realiza dividiendo cada valor por la diferencia entre el valor máximo y mínimo del vector.
+
+**Parámetros:**
+ - vector_numerico: Un vector numérico que se desea normalizar.
+ 
+**Valor de retorno:**
+Un vector numérico normalizado en una escala de 0 a 1.
+
+```{r,eval=TRUE, echo=TRUE}
+normalizar_vector <- function(vector_numerico) {
+
+  #Calculo de valores maximos y minimos
+  maximo <- max(vector_numerico)
+  minimo <- min(vector_numerico)
+
+  #Asegurar que es posible la normalizacion, sino, hacerlo saber
+  #Evitar divisiones por 0
+  if (maximo == minimo) {
+    cat("La columna no se normaliz? debido a la falta de variacion.\n")
+    return(vector_numerico)
+  }
+  #Normalizar un vector numerico en una escala de 0 a 1.
+  Normalizacion <- (vector_numerico - minimo) / (maximo - minimo)
+  return(Normalizacion)
+}
+```
+
+### Ejemplo de uso: Normalización 
+```{r,eval=TRUE, echo=TRUE}
+  datos <- c(10, 20, 30, 40, 50)
+  datos_normalizados <- normalizar_vector(datos)  # Normaliza el vector en una escala de 0 a 1.
+  print(datos_normalizados)
+```
+
+
+#### Ejemplo con falta de variación 
+```{r,eval=TRUE, echo=TRUE}
+   datos_faltavariacion <- c(10, 10, 10, 10, 10)
+   normalizar_vector(datos_faltavariacion)  
+```
+
+## 3.2. ESTANDARIZACIÓN 
+
+**Descripción:**
+Esta función estandariza un vector numérico para que tenga una media de 0 y una desviación estándar de 1. La estandarización se realiza restando la media y dividiendo por la desviación estándar del vector.
+
+**Parámetros:**
+ - vector_numerico: Un vector numérico que se desea estandarizar.
+ 
+**Valor de retorno:**
+n vector numérico estandarizado con media 0 y desviación estándar 1. Si no es posible estandarizar el vector (por falta de variación), se muestra un mensaje de advertencia y se devuelve el vector original sin cambios.
+
+```{r,eval=TRUE, echo=TRUE}
+estandarizar_vector <- function(vector_numerico) {
+  #Calculo de media y desviacion estandar
+  media <- mean(vector_numerico)
+  sd <- sd(vector_numerico)
+
+  #Asegurar que es posible la estandarizacion, sino, hacerlo saber
+  #Evitar divisiones por 0
+  if (sd == 0) {
+    cat("La columna no se estandariza debido a la falta de variacion.\n")
+    return(vector)
+  }
+  #Estandariza un vector numerico para que tenga media 0 y desviacion estandar 1.
+  Estandarizacion<- (vector_numerico - mean(vector_numerico)) / sd(vector_numerico)
+  return(Estandarizacion)
+}
+```
+
+### Ejemplo de uso: Estandarización
+```{r,eval=TRUE, echo=TRUE}
+   datos <- c(10, 20, 30, 40, 50)
+   datos_estandarizados <- estandarizar_vector(datos) # Estandariza el vector con media 0 y desviacion estandar 1.
+   print(datos_estandarizados)
+```
+
+#### Ejemplo con falta de variación
+Muestra un mensaje de advertencia y devuelve el vector original.
+
+```{r,eval=TRUE, echo=TRUE, error=TRUE}
+   datos_faltavariacion <- c(10, 10, 10, 10, 10)
+   estandarizar_vector(datos_faltavariacion)  
+```
+
+## 3.3. NORMALIZAR Y/O ESTANDARIZAR DATASET
+**Descripción:**
+Esta función toma un conjunto de datos y aplica normalización y estandarización a todas las columnas numéricas del conjunto de datos. La normalización escala los valores de cada columna a un rango de 0 a 1, mientras que la estandarización ajusta la media a 0 y la desviación estándar a 1 en cada columna numérica.
+
+**Parámetros:**
+ - dataset: El dataset que se desea normalizar y estandarizar
+ 
+**Valor de retorno:**
+ Una lista que contiene dos versiones del dataset: uno normalizado y otro estandarizado. Cada versión tiene las mismas columnas que el dataset original, pero con los valores normalizados  o estandarizados, respectivamente.
+
+```{r,eval=TRUE, echo=TRUE}
+
+normalizar_estandarizar_dataset <- function(dataset) {
+  columnas_numericas <- sapply(dataset, is.numeric) # Obtener las columnas numericas
+  dataset_normalizado <- dataset_estandarizado <- dataset
+
+  #Aplicar normalizacion y estandarizacion a todas las columnas numericas de un dataset
+  for (col_name in colnames(dataset)[columnas_numericas]) {
+    dataset_estandarizado[[col_name]] <- estandarizar_vector(dataset_estandarizado[[col_name]]) # Estandariza un vector numerico para que tenga media 0 y desviacion estandar 1
+    dataset_normalizado[[col_name]] <- normalizar_vector(dataset_normalizado[[col_name]]) # Normaliza un vector numerico en una escala de 0 a 1
+  }
+  return(list(normalizado = dataset_normalizado, estandarizado = dataset_estandarizado))
+}
+```
+
+### Ejemplo de uso: Normalización y estandarización de dataset 
+
+```{r,eval=TRUE, echo=TRUE}
+ datos <- data.frame(
+ Atributo1 = c(10, 20, 30, 40, 50),
+ Atributo2 = c(1, 2, 3, 4, 5)
+ )
+ #Aplicar normalizacion y estandarizacion al conjunto de datos de ejemplo
+  resultados <- normalizar_estandarizar_dataset(datos)
+  normalizado <- resultados$normalizado # Dataset normalizado
+  estandarizado <- resultados$estandarizado # Dataset estandarizado
+  print(normalizado)
+  print(estandarizado)
+```
+
+## 4. FILTRADO
+
+El filtrado de variables (basado en métricas implementadas anteriormente) es un proceso en el que se seleccionan variables específicas de un conjunto de datos que cumplen ciertos requisitos o criterios establecidos. Esto implica partir de un dataset y obtener uno nuevo que solo contenga las variables que cumplen con los requisitos indicados, como una entropía superior a un umbral determinado.
+
+**Descripción:**
+Esta función filtra las variables de un dataset basado en un umbral de entropía. Las variables cuyas entropías superen el umbral se mantienen en el dataset resultante.
+
+**Parámetros:**
+ - dataset El dataset del cual se van a filtrar las variables.
+ - umbral_entropia El umbral de entropía. Las variables con una entropía mayor que este umbral se mantienen en el dataset resultante.
+ 
+**Valor de retorno:**
+Un nuevo dataset que contiene las variables que cumplen con el criterio de entropía especificado.
+
+```{r,eval=TRUE, echo=TRUE}
+
+filtrar_variables_por_entropia <- function(dataset, umbral_entropia) {
+  # Crear una lista para almacenar las variables que cumplen con el criterio
+  variables_filtradas <- list()
+
+  # Calcular la entropia para cada variable y filtrar
+  for (col_name in names(dataset)) {
+    variable <- dataset[[col_name]]
+    #verificar si todos los elementos de la variable son de tipo caracter.
+    if (all(sapply(variable, is.character))) {
+      entropia <- calcular_entropia(variable)
+      if (entropia > umbral_entropia) {
+        variables_filtradas[[col_name]] <- variable
+      }
+    }
+  }
+  # Crear un nuevo dataset con las variables filtradas
+  nuevo_dataset <- variables_filtradas
+  
+  return(nuevo_dataset)
+}
+```
+
+### Ejemplo de uso: Filtrado de variables por entropía
+
+```{r,eval=TRUE, echo=TRUE}
+  dataset <- list(
+  Variable1 = c("A", "A", "A", "C", "B"),
+  Variable2 = c("X", "Y", "X", "Z", "Z"),
+  Variable3 = c("A", "B", "A", "C", "B")
+  )
+  umbral_entropia <- 1.4  # Definir un umbral de entropia
+  #Filtrar las variables basadas en la entropia
+  variables_filtradas <- filtrar_variables_por_entropia(dataset, umbral_entropia)
+  print(variables_filtradas)
+```
+
+
+## 5. CORRELACIÓN E INFORMACIÓN MUTUA 
+
+El cálculo de la correlación (información mutua en el caso de variables categóricas) por pares entre variables de un dataset se puede realizar utilizando diferentes métodos dependiendo del tipo de variables. Para variables numéricas, se utiliza la correlación de Pearson, mientras que para variables categóricas la información mutua. Estas medidas ayudan a comprender las relaciones entre variables y pueden ser útiles en el análisis de datos y la toma de decisiones.
+
+## 5.1. CORRELACIÓN
+
+**Descripción:**
+Esta función calcula la correlación de Pearson entre dos variables, que mide el grado de relación lineal entre ellas. La correlación de Pearson es un valor en el rango de -1 a 1, donde 1 indica una correlación positiva perfecta, -1 indica una correlación negativa perfecta y 0 indica ausencia de correlación.
+
+**Parámetros:**
+ - variable1: Un vector numérico que representa la primera variable.
+ - variable2: Un vector numérico que representa la segunda variable.
+ 
+**Valor de retorno:**
+El valor de la correlación de Pearson entre las dos variables. Si los vectores  no tienen la misma longitud, la función muestra un mensaje de error y se detiene.
+
+
+```{r,eval=TRUE, echo=TRUE}
+
+calcular_correlacion <- function(variable1, variable2) {
+
+  #Asegurar que es posible la correlacion, sino, hacerlo saber
+  if (length(variable1) != length(variable2)) {
+    stop("Los vectores deben tener la misma longitud")
+  }
+  
+  # Calcular la media de cada variable
+  n <- length(variable1)
+  media_v1 <- sum(variable1) / n
+  media_v2 <- sum(variable2) / n
+
+  # Formula de correlacion de Pearson
+  correlacion_pearson <- (sum((variable1 - media_v1) * (variable2 - media_v2)) / sqrt(sum((variable1 - media_v1)^2) * sum((variable2 - media_v2)^2)))
+
+  return(correlacion_pearson)
+}
+```
+
+### Ejemplo de uso: Correlación
+
+```{r,eval=TRUE, echo=TRUE}
+ var1 <- c(1, 2, 3, 4, 5)
+ var2 <- c(2, 3, 4, 5, 6)
+ calcular_correlacion(var1, var2)  # Calcula la correlacion de Pearson entre las dos variables.
+```
+
+#### Ejemplo con vectores de diferente longitud 
+Muestra un mensaje de error.
+
+```{r,eval=TRUE, echo=TRUE, error=TRUE}
+ var1 <- c(1, 2, 3)
+ var2 <- c(2, 3, 4, 5)
+ calcular_correlacion(var1, var2)  
+```
+
+
+## 5.2. INFORMACIÓN MUTUA 
+
+**Descripción:**
+sta función calcula la información mutua entre dos variables categóricas, que mide la dependencia entre ellas. La información mutua cuantifica cuánta información compartida existe entre las dos variables. Es un valor no negativo, donde 0 indica independencia y valores mayores indican mayor dependencia.
+
+**Parámetros:**
+ - variable1: Un vector categórico que representa la primera variable.
+ - variable2: Un vector categórico que representa la segunda variable.
+ 
+**Valor de retorno:**
+El valor de la información mutua entre las dos variables. Si los vectores no tienen la misma longitud, la función muestra un mensaje de error y se detiene.
+
+
+```{r,eval=TRUE, echo=TRUE }
+
+calcular_informacion_mutua <- function(variable1, variable2) {
+
+  #Asegurar que es posible la correlacion (informacion mutua), sino, hacerlo saber
+  if (length(variable1) != length(variable2)) {
+    stop("Los vectores deben tener la misma longitud")
+  }
+
+  # Crear tablas de contingencia (nij)
+  nij <- table(variable1, variable2)
+
+  # Probabilidades conjuntas y marginales
+  n <- length(variable1)
+
+  P_v1_v2 <- nij / n
+  P_v1 <- rowSums(nij) / n
+  P_v1 <- as.vector(P_v1)
+  P_V2 <- colSums(nij) / n
+  P_V2 <- as.vector(P_V2)
+
+    # Informacion mutua (I)
+  informacion_mutua <- 0
+  for (i in 1:nrow(P_v1_v2)) {
+    for (j in 1:ncol(P_v1_v2)) {
+      valor <- P_v1_v2[i, j]
+      # Verificar si el valor es numeric(0) y asignarle 0
+      valor_convertido <- ifelse(length(valor) == 0, 0, valor)
+      if (valor_convertido > 0) {
+        #Formula para el calculo
+        informacion_mutua <- informacion_mutua +
+          P_v1_v2[i, j] * log2(P_v1_v2[i, j] / (P_v1[i] * P_V2[j]))
+      }
+    }
+  }
+  return(informacion_mutua)
+}
+```
+
+### Ejemplo de uso: Información mutua  
+
+```{r,eval=TRUE, echo=TRUE, error=TRUE}
+  var1 <- c("A", "B", "A", "C", "B")
+  var2 <- c("X", "Y", "X", "Z", "X")
+  calcular_informacion_mutua(var1, var2)  # Calcula la informacion mutua entre las dos variables.
+```
+
+#### Ejemplo con vectores de diferente longitud 
+Muestra un mensaje de error
+
+```{r,eval=TRUE, echo=TRUE, error=TRUE}
+ var1 <- c("A", "B", "A")
+ var2 <- c("X", "Y", "X", "Z")
+ calcular_informacion_mutua(var1, var2)
+```
+
+
+## 5.3. CALCULAR CORRELACION Y/O INFORMACION MUTUA
+**Descripción:**
+Esta función toma un dataset y calcula las correlaciones (en el caso de variables numéricas) o la información mutua (en el caso de variables categóricas) entre todas las pares de variables del dataset. La función devuelve una matriz de correlaciones donde cada celda representa la correlación entre dos variables. Para variables incompatibles (una numérica y una categórica), se asigna NA.
+
+**Parámetros:**
+ - dataset: El dataset que contiene las variables a analizar.
+ 
+**Valor de retorno:**
+Una matriz de correlaciones que muestra las correlaciones (o información mutua) entre las variables del dataset. Las filas y columnas de la matriz están etiquetadas con los nombres de las variables originales.
+
+```{r,eval=TRUE, echo=TRUE}
+
+calcular_correlacion_informacion_mutua <- function(dataset) {
+
+  #Crear la matriz de correlaciones inicializada a ceros
+  n_variables <- ncol(dataset)
+  matriz_correlacion <- matrix(0, nrow = n_variables, ncol = n_variables)
+
+  #Crear bucle para el dataset. Evitar duplicados
+  for (i in 1:(n_variables - 1)) {
+    for (j in (i + 1):n_variables) {
+      # Obtener los valores de las dos variables a comparar
+      variable1 <- dataset[, i]
+      variable2 <- dataset[, j]
+
+      # ¿De que tipo de variable se trata?
+      if (is.numeric(variable1) && is.numeric(variable2)) {
+        # Variables num?ricas.Correlacion (Relacion lineal)
+        correlacion <- calcular_correlacion(variable1, variable2)
+
+      } else if (is.factor(variable1) && is.factor(variable2)) {
+        # Variables categoricas. Informacion mutua (sin suponer relacion lineal)
+        correlacion <- calcular_informacion_mutua(variable1, variable2)
+
+      } else {
+        # Variables no compatibles (una numerica y una categorica), asignar NA
+        correlacion <- NA
+      }
+      # Asignar el valor de correlacion (informacion mutua en categoricas)
+      matriz_correlacion[i, j] <- correlacion
+      matriz_correlacion[j, i] <- correlacion #asegurar simetrua
+    }
+  }
+  # Evitar confusion. Nombrar filas/columnas con los nombres de las variables originales
+  rownames(matriz_correlacion) <- colnames(dataset)
+  colnames(matriz_correlacion) <- colnames(dataset)
+
+  return(matriz_correlacion)
+}
+```
+
+
+### Ejemplo de uso: Calcular correlación y/o información mutua  
+
+```{r,eval=TRUE, echo=TRUE}
+ dataset <- data.frame(
+ Variable1 = c(1.8, 2.6, 4.5, 4.0, 1.2),
+ Variable2 = c(0.7, 2.0, 3.5, 6.0, 0.5),
+ Variable3 = factor(c("B", "B", "A", "C", "C")),
+ Variable4 = factor(c("B", "Y", "A", "Z", "Z"))
+ )
+ matriz_correlacion <- calcular_correlacion_informacion_mutua(dataset)
+ print(matriz_correlacion)
+```
+
+## 6. PLOT
+
+Los gráficos para el AUC y las matrices de correlación/información mutua son herramientas importantes en el análisis de datos. Permiten visualizar y comprender mejor las relaciones y patrones en los datos, lo que ayuda a tomar decisiones informadas y a obtener información valiosa sobre las variables y los modelos utilizados.
+
+
+## 6.1. PLOT AUC
+Los gráficos de AUC, como la curva ROC, permiten evaluar y comparar la capacidad predictiva de un modelo de clasificación. El AUC es una medida que resume la calidad del modelo en un solo número, y la curva ROC muestra cómo varía la tasa de verdaderos positivos en función de la tasa de falsos positivos a medida que se ajusta el umbral de clasificación. Estos gráficos ayudan a comprender la efectividad del modelo y a tomar decisiones informadas sobre su rendimiento.
+
+**Descripción:**
+Esta función toma las predicciones de un modelo y las etiquetas verdaderas (clase)  y traza la Curva ROC (Receiver Operating Characteristic) para evaluar el rendimiento del modelo en clasificación binaria. También calcula el Área Bajo la Curva ROC (AUC) como una métrica de evaluación. La Curva ROC muestra la relación entre la Tasa de Verdaderos Positivos (TPR) y la Tasa de Falsos Positivos (FPR) en varios umbrales de decisión.
+
+**Parámetros:**
+ - predicciones Un vector de predicciones numéricas del modelo. Es decir, un vector de predicciones de clasificación, generalmente probabilidades de pertenencia a la clase positiva.
+ - clase_verdadera Un vector de etiquetas verdaderas de clase (0 o 1) que representa las observaciones reales. Es decir, 1 para verdadero positivo y 0 para falso positivo.
+ 
+**Valor de retorno:**
+Un gráfico de la Curva ROC y el valor del Área Bajo la Curva ROC (AUC).
+
+```{r,eval=TRUE, echo=TRUE}
+plot_AUC <- function(predicciones, clase_verdadera) {
+
+  # Calcular la TPR y FPR en varios umbrales de decision
+  umbrales <- sort(unique(predicciones), decreasing = TRUE)
+
+  #Tasa de verdaderos positivos o sensibilidad (eje vertical)
+  TRP <- numeric(length(umbrales))
+  #Tasa de falsos positivos (eje horizontal)
+  FPR <- numeric(length(umbrales))
+
+  # Bucle para calcular TPR y FPR para cada umbral de decision
+  for (i in 1:length(umbrales)) {
+    umbral <- umbrales[i]
+    predicciones_umbral <- ifelse(predicciones >= umbral, 1, 0)
+    TRP[i] <- sum(predicciones_umbral == 1 & clase_verdadera == 1) / sum(clase_verdadera == 1)
+    FPR[i] <- sum(predicciones_umbral == 1 & clase_verdadera == 0) / sum(clase_verdadera == 0)
+  }
+
+  # Calcular el Area Bajo la Curva ROC (AUC)
+  auc <- calcular_auc(predicciones, clase_verdadera)
+
+  # Plot de la Curva ROC
+  # TPR en el eje vertical y FPR en eje horizontal, rangos de (0,1)
+  plot(FPR, TRP, type = "l", col = "black", lwd = 2, xlim = c(0, 1), ylim = c(0, 1),
+       xlab = "False Positive Rate (FPR)", ylab = "True Positive Rate (TPR)",
+       main = paste("Curva ROC (AUC =", round(auc, 2), ")"))
+
+  # Linea de referencia diagonal (clasificador aleatorio)
+  lines(c(0, 1), c(0, 1), col = "gray")
+
+  # Leyenda
+  legend("bottomright", legend = "ROC Curve", col = "black", lwd=2)
+}
+```
+
+### Ejemplo de uso : Plot AUC
+
+```{r,eval=TRUE, echo=TRUE}
+ predicciones <- c(0.8, 0.6, 0.7, 0.9, 0.3, 0.5, 0.2, 0.4, 0.6, 0.8)
+ clase_verdadera <- c(1, 1, 0, 1, 0, 0, 0, 1, 1, 0)
+ plot_AUC(predicciones, clase_verdadera) # Trazar la Curva ROC y calcular el AUC.
+```
+
+## 6.2. PLOT CORRELACION E INFORMACIÓN MUTUA 
+
+Las matrices de correlación/información mutua permiten visualizar la relación entre las variables en un conjunto de datos. Estas matrices muestran la fuerza y la dirección de la relación entre las variables, lo que ayuda a identificar patrones y dependencias. 
+
+En el caso de las variables numéricas, la matriz de correlación de Pearson muestra la correlación lineal entre las variables. Por otro lado, en el caso de las variables categóricas, la matriz de información mutua muestra la dependencia entre las variables. Estos gráficos ayudan a identificar variables altamente correlacionadas o dependientes, lo que puede ser útil para el análisis de datos y la selección de características.
+
+**Descripción:**
+Esta función calcula la matriz de correlacion y la representa segun el metodo seleccionado.
+
+**Parámetros:**
+ - dataset: El conjunto de datos utilizado para calcular la matriz de correlación.
+ - method: En método utilizado para calcular la matriz de correlación. Puede ser 'correlacion' o 'mutua'
+ 
+**Valor de retorno:**
+Un gráfico de la Curva ROC y el valor del Área Bajo la Curva ROC (AUC).
+
+```{r,eval=TRUE, echo=TRUE}
+
+plot_correlation_matrix <- function(dataset, method) {
+  correlation_matrix <- calcular_correlacion_informacion_mutua(dataset)
+  if(method == 'correlacion'){
+    plot_matrix(correlation_matrix, "correlacion")
+
+  }else if(method == 'mutua'){
+    plot_matrix(correlation_matrix, "mutua")
+  }
+}
+```
+
+```{r,eval=TRUE, echo=TRUE}
+
+plot_matrix <- function(correlation_matrix, title) {
+  
+  # Generar una paleta de colores que va desde azul a blanco a rojo
+  color_matrix <- colorRampPalette(c("blue", "white", "red"))(100)
+  col_limits <- c(-1, 1)
+  
+  # Representar la matriz de correlación como una imagen
+   image(1:ncol(correlation_matrix), 1:nrow(correlation_matrix), t(correlation_matrix), col = color_matrix, ylab = "", xlab = "", main = paste("Matriz de", title))
+    # Agregar ejes x e y a la imagen
+    axis(1, at = 1:ncol(correlation_matrix), cex.axis = 0.8)
+    axis(2, at = 1:nrow(correlation_matrix), cex.axis = 0.8)
+    
+ # Recorrer cada celda de la matriz de correlación
+  for (i in 1:ncol(correlation_matrix)) {
+    for (j in 1:nrow(correlation_matrix)) {
+      # Si el índice de columna no es igual al índice de fila
+      if (i != j) {
+        # Mostrar el valor de correlación redondeado en la celda
+        text(i, j, round(correlation_matrix[i, j], 2), cex = 1.5, col = "black")
+      } else {
+        # Mostrar el nombre de la variable en la diagonal principal
+        text(i, j, colnames(correlation_matrix)[i], cex = 1.2, col = "black")
+      }
+    }
+  }
+}
+```
+
+### Ejemplo de uso : Plot correlación e información mutua
+
+```{r,eval=TRUE, echo=TRUE, error=TRUE}
+  dataset <- data.frame(
+  Variable1 = c(1.8, 2.6, 4.5, 4.0, 1.2),
+  Variable2 = c(0.7, 2.0, 3.5, 6.0, 0.5),
+  Variable3 = factor(c("B", "B", "A", "C", "C")),
+  Variable4 = factor(c("B", "Y", "A", "Z", "Z"))
+  )
+  #Representacion matriz de correlacion
+  plot_correlation_matrix (dataset, 'correlacion')
+  plot_correlation_matrix (dataset, 'mutua')
+```
+
+##  7. EXPORTACIÓN Y CARGA DE DATOS
+
+## 7.1. EXPORTACIÓN 
+
+**Descripción:**
+Esta función toma un DataFrame, lo convierte en un archivo CSV y muestra la ruta absoluta del archivo creado. Es útil para guardar y compartir conjuntos de datos en formato CSV.
+
+**Parámetros:**
+ - df: El DataFrame que se exportará a un archivo CSV.
+ - nombre_archivo_csv: El nombre del archivo CSV en el que se guardarán los datos.
+ 
+**Valor de retorno:**
+El contenido del archivo CSV creado.
+
+
+```{r,eval=TRUE, echo=TRUE}
+
+exportar_a_CSV <- function(df, nombre_archivo_csv) {
+  df <- as.data.frame(df)
+
+  # Exportar el DataFrame a un archivo CSV
+  write.csv(df, file = nombre_archivo_csv, row.names = FALSE)
+
+  # Verificar si el archivo se cre? correctamente
+  if (file.exists(nombre_archivo_csv)) {
+    ruta_absoluta <- normalizePath(nombre_archivo_csv)
+    cat(paste("Los datos se han exportado correctamente. La ruta del archivo exportado es", ruta_absoluta, "\n"))
+  } else {
+    cat("No se pudo crear el archivo CSV.\n")
+  }
+  # Mostrar parte del contenido exportado
+  contenido_exportado <- read.csv(nombre_archivo_csv)
+  cat("Contenido del archivo CSV:\n")
+
+  return(contenido_exportado)
+}
+```
+
+### Ejemplo de uso: Exportar a CSV
+
+```{r,eval=TRUE, echo=TRUE}
+ datos<- data.frame(
+  Edad = c(25, 30, 35, 40, 45),
+  Altura = c(160, 175, 180, 170, 185),
+  Peso = c(60, 70, 75, 80, 90)
+ )
+ # Nombra el archivo CSV en el que deseas guardar los datos y llama a la funciOn para exportar
+ exportar_a_CSV(datos, nombre_archivo_csv="resultados.csv")
+ 
+```
+
+## 7.2. CARGAR DATOS DESDE CSV
+
+**Descripción:**
+Esta función carga datos desde un archivo CSV utilizando la biblioteca readr. Se espera que el archivo CSV tenga un formato válido y contenga datos tabulares. Los datos cargados se almacenan en un DataFrame y se muestran en la consola.
+
+**Parámetros:**
+ - nombre_archivo_csv El nombre del archivo CSV desde el cual se cargarán los datos.
+ 
+**Valor de retorno:**
+Un DataFrame que contiene los datos cargados desde el archivo CSV, o NULL si no se pudieron cargar los datos
+
+### Cargar la Biblioteca readr 
+
+```{r,eval=TRUE, echo=TRUE}
+library(readr)
+```
+
+
+```{r,eval=TRUE, echo=TRUE}
+cargar_datos_desde_csv <- function(nombre_archivo_csv) {
+  # Intentar leer datos desde el archivo CSV
+  datos_cargados <- read.csv(nombre_archivo_csv)
+
+  # Verificar si se cargaron datos
+  if (!is.null(datos_cargados)) {
+    cat("Datos cargados exitosamente desde el archivo CSV:\n")
+    print(datos_cargados)
+    return(datos_cargados)
+  } else {
+    cat("No se pudieron cargar los datos desde el archivo CSV.\n")
+    return(NULL)
+  }
+}
+```
+
+
+### Ejemplo de uso: Cargar datos desde CSV
+
+```{r,eval=TRUE, echo=TRUE}
+# Llamar a la funcion para cargar datos desde un archivo CSV
+ datos_cargados <- cargar_datos_desde_csv(nombre_archivo_csv = "resultados.csv")
+```
+

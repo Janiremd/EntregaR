@@ -1,0 +1,22 @@
+Package: EntregaR
+Type: Package
+Title: Funciones implementadas
+Version: 0.1.0
+Author: Janire Mediavilla Díez
+Maintainer: Janire Mediavilla <jmediavilla009@ikasle.ehu.eus>
+Suggests:
+    rmarkdown,
+    knitr
+Description: Este paquete proporciona herramientas para la preparación y análisis de datos,
+    centrándose en la discretización, cálculo de métricas, normalización, estandarización,
+    filtrado y análisis de correlación.Además, incluye funciones para generar gráficos y
+    facilitar la visualización de los resultados. Asimismo, permite la manipulación y 
+    exploración de conjunto de datos de manera eficiente y efectiva. 
+License: GPL (>=2)
+Encoding: UTF-8
+BuildVignettes: TRUE
+VignetteBuilder: 
+    knitr,
+    rmarkdown
+LazyData: true
+RoxygenNote: 7.2.3
